@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>二之國 - 週三王國活動抽獎系統 (即時同步版)</title>
     
+    <!-- 引入 React & Tailwind CSS -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
+    <!-- 引入 Firebase (Authentication + Firestore) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -143,7 +145,7 @@
 
             const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(''), 3000); };
 
-            // 🔥 新增：密碼登入邏輯
+            // 密碼登入邏輯
             const handlePasswordLogin = () => {
                 const pwd = window.prompt('請輸入管理員專屬密碼：');
                 if (pwd === 'meow') {
@@ -253,19 +255,24 @@
                     const winners = drawResults[prize.id];
                     textToCopy += `🎁 【${prize.name}】 (共 ${prize.limit} 名)\n`;
                     if (winners.length === 0) { textToCopy += `  無人投標\n`; } 
-                    else { winners.forEach((winner, idx) => { textToCopy += `  ${idx + 1}. 🎮 ${winner.gameId} (LINE: ${winner.lineId})\n`; }); }
+                    else { 
+                        winners.forEach((winner, idx) => { 
+                            // 🔥 這裡在 LINE ID 前面加上了 @，複製出去就會有標記功能
+                            textToCopy += `  ${idx + 1}. 🎮 ${winner.gameId} (@${winner.lineId})\n`; 
+                        }); 
+                    }
                     textToCopy += "\n";
                 });
                 textToCopy += "恭喜以上得獎者！🎊";
 
                 try {
-                    navigator.clipboard.writeText(textToCopy).then(() => showToast('📋 已複製，可貼上至 LINE！'));
+                    navigator.clipboard.writeText(textToCopy).then(() => showToast('📋 已複製，可貼上至 LINE 自動標記！'));
                 } catch(err) {
                     const textArea = document.createElement("textarea");
                     textArea.value = textToCopy;
                     document.body.appendChild(textArea);
                     textArea.select(); document.execCommand("copy"); document.body.removeChild(textArea);
-                    showToast('📋 已複製，可貼上至 LINE！');
+                    showToast('📋 已複製，可貼上至 LINE 自動標記！');
                 }
             };
 
@@ -401,7 +408,7 @@
                                     </button>
                                 ) : (
                                     <div className="w-full bg-gray-200 text-gray-500 font-bold py-4 px-4 rounded-xl text-center border-2 border-dashed border-gray-300">
-                                        <i className="fa-solid fa-lock mr-2"></i> 需要管理員登入才能執行抽獎
+                                        <i className="fa-solid fa-lock mr-2"></i> 需要管理員權限才能執行抽獎
                                     </div>
                                 )}
                             </div>
@@ -430,7 +437,8 @@
                                                         {winners.map((winner, idx) => (
                                                             <li key={idx} className="text-sm bg-gray-50 p-2 rounded flex flex-col">
                                                                 <span className="font-bold text-blue-700"><i className="fa-solid fa-medal text-yellow-500 mr-1"></i> {idx + 1}. {winner.gameId}</span>
-                                                                <span className="text-gray-500 text-xs ml-5">LINE: {winner.lineId}</span>
+                                                                {/* 🔥 畫面顯示上也加上了 @ */}
+                                                                <span className="text-gray-500 text-xs ml-5">LINE: @{winner.lineId}</span>
                                                             </li>
                                                         ))}
                                                     </ul>
