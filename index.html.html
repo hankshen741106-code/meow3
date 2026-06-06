@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>二之國 - 週三王國活動抽獎系統 (即時同步版)</title>
     
+    <!-- 引入 React & Tailwind CSS -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
+    <!-- 引入 Firebase (Authentication + Firestore) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -29,7 +31,7 @@
 
     <script type="text/babel">
         // ==========================================
-        // 🔴 Firebase 金鑰 (自動為您保留)
+        // 🔴 Firebase 金鑰
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyBfhqrnYUHEFutU9hf4Kii1zo2_XNd8TbM",
@@ -47,7 +49,7 @@
         const db = firebase.firestore();
 
         // ==========================================
-        // 🔴 管理員信箱 (自動為您保留)
+        // 🔴 管理員信箱
         // ==========================================
         const ADMIN_EMAILS = [
             "hankshen741106@gmail.com",
@@ -56,12 +58,18 @@
 
         const { useState, useEffect } = React;
 
+        // 🔥 更新：擴充為 10 個獎項
         const defaultPrizes = [
             { id: 'prize_1', name: '屬性增幅', limit: 10, icon: 'fa-arrow-up-right-dots' },
             { id: 'prize_2', name: '強化娃娃', limit: 4, icon: 'fa-robot' },
             { id: 'prize_3', name: '防具小魔人', limit: 2, icon: 'fa-shield-halved' },
             { id: 'prize_4', name: '四葉幸運草束', limit: 5, icon: 'fa-clover' },
             { id: 'prize_5', name: '克萊塔的裝備支援箱', limit: 5, icon: 'fa-box-open' },
+            { id: 'prize_6', name: '王國活動-娃娃', limit: 1, icon: 'fa-chess-king' },
+            { id: 'prize_7', name: '遺物-娃娃', limit: 1, icon: 'fa-gem' },
+            { id: 'prize_8', name: '遺物-競爭水晶球自選箱', limit: 1, icon: 'fa-box-archive' },
+            { id: 'prize_9', name: '最強王國-娃娃', limit: 1, icon: 'fa-crown' },
+            { id: 'prize_10', name: '最強王國-競爭水晶球自選箱', limit: 1, icon: 'fa-gift' }
         ];
 
         const initialMembers = [
@@ -102,14 +110,13 @@
             const [drawResults, setDrawResults] = useState(null);
             const [toastMessage, setToastMessage] = useState('');
 
-            // 監聽 Google 登入狀態 (加上密碼登入保護)
+            // 監聽登入狀態
             useEffect(() => {
                 const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
                     if (user) {
                         setCurrentUser(user);
                         setIsAdmin(ADMIN_EMAILS.includes(user.email));
                     } else {
-                        // 確保不會把「密碼登入」的狀態覆蓋掉
                         setCurrentUser(prev => {
                             if (prev && prev.isPassword) return prev;
                             setIsAdmin(false);
@@ -126,24 +133,31 @@
                     const votesData = [];
                     snapshot.forEach((doc) => { votesData.push(doc.data()); });
                     setVotes(votesData);
-                }, (error) => {
-                    console.error("讀取名單失敗:", error);
                 });
                 return () => unsubscribe();
             }, []);
 
-            // 監聽 Firestore 資料庫：獎品數量
+            // 🔥 智能合併邏輯：結合雲端設定與新擴充的獎品
             useEffect(() => {
                 const unsubscribe = db.collection('system').doc('prizeConfig').onSnapshot((doc) => {
-                    if (doc.exists) { setPrizes(doc.data().items); } 
-                    else { setPrizes(defaultPrizes); }
+                    if (doc.exists) { 
+                        const cloudPrizes = doc.data().items;
+                        // 確保新的獎品（雲端沒有的）也會被加進去，舊的獎品則保留雲端設定的數量
+                        const mergedPrizes = defaultPrizes.map(defaultPrize => {
+                            const cloudPrize = cloudPrizes.find(cp => cp.id === defaultPrize.id);
+                            return cloudPrize ? { ...defaultPrize, limit: cloudPrize.limit } : defaultPrize;
+                        });
+                        setPrizes(mergedPrizes); 
+                    } else { 
+                        setPrizes(defaultPrizes); 
+                    }
                 });
                 return () => unsubscribe();
             }, []);
 
             const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(''), 3000); };
 
-            // 密碼登入邏輯
+            // 密碼登入
             const handlePasswordLogin = () => {
                 const pwd = window.prompt('請輸入管理員專屬密碼：');
                 if (pwd === 'meow') {
@@ -255,7 +269,6 @@
                     if (winners.length === 0) { textToCopy += `  無人投標\n`; } 
                     else { 
                         winners.forEach((winner, idx) => { 
-                            // 🔥 移除括號，保留 @ 與 LINE ID
                             textToCopy += `  ${idx + 1}. 🎮 ${winner.gameId} @${winner.lineId}\n`; 
                         }); 
                     }
