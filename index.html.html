@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二之國 - 週三王國活動抽獎系統 (即時同步版)</title>
+    
+    <!-- 引入 React & Tailwind CSS -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- 引入 Firebase (Authentication + Firestore) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; color: #1f2937; }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        input[type="checkbox"] { accent-color: #3b82f6; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // ==========================================
+        // 🔴🔴🔴 步驟一：請替換為您的 Firebase 金鑰 🔴🔴🔴
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "您的_API_KEY",
+            authDomain: "您的_PROJECT_ID.firebaseapp.com",
+            projectId: "您的_PROJECT_ID",
+            storageBucket: "您的_PROJECT_ID.appspot.com",
+            messagingSenderId: "您的_SENDER_ID",
+            appId: "您的_APP_ID"
+        };
+        
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+
+        // ==========================================
+        // 🔴🔴🔴 步驟二：請替換為您的管理員信箱 🔴🔴🔴
+        // ==========================================
+        const ADMIN_EMAILS = [
+            "您的信箱@gmail.com" 
+        ];
+
+        const { useState, useEffect } = React;
+
+        // 獎品設定
+        const prizes = [
+            { id: 'prize_1', name: '屬性增幅', limit: 10, icon: 'fa-arrow-up-right-dots' },
+            { id: 'prize_2', name: '強化娃娃', limit: 4, icon: 'fa-robot' },
+            { id: 'prize_3', name: '防具小魔人', limit: 2, icon: 'fa-shield-halved' },
+            { id: 'prize_4', name: '四葉幸運草束', limit: 5, icon: 'fa-clover' },
+            { id: 'prize_5', name: '克萊塔的裝備支援箱', limit: 5, icon: 'fa-box-open' },
+        ];
+
+        // 最新成員名單
+        const initialMembers = [
+            { gameId: '竹息辣寶貝', lineId: 'Nick' }, { gameId: '閉嘴雷包', lineId: 'M' },
+            { gameId: '歐娜', lineId: 'ANDYHU' }, { gameId: '雪山上の醬板鴨', lineId: 'Hank Shen' },
+            { gameId: 'Anicesiou', lineId: 'Zihsiou' }, { gameId: 'Oo卡肉絲oO', lineId: 'Carlos.Tseng' },
+            { gameId: '國際優狼', lineId: 'NIK' }, { gameId: '韓式豆辦鍋', lineId: 'M.' },
+            { gameId: '粉紅棉花糖大叔', lineId: 'Song 恩' }, { gameId: '石柱', lineId: '石晉榮' },
+            { gameId: '朕心繫天下', lineId: '83' }, { gameId: '土河馬', lineId: 'WT' },
+            { gameId: '夏洛特啊', lineId: 'Wyne' }, { gameId: '愛麗絲T', lineId: 'Alice' },
+            { gameId: '體育系', lineId: 'MⓂ️' }, { gameId: '何豆豆WHLS', lineId: 'Lung' },
+            { gameId: '柴柴泡溫泉(1)', lineId: '白白x柴' }, { gameId: '柴柴泡溫泉(2)', lineId: '白白x柴' },
+            { gameId: '阿輔', lineId: '阿輔' }, { gameId: 'Hippoooo', lineId: 'Hippo' },
+            { gameId: '唬唬蛇', lineId: 'Lung' }, { gameId: '推金幣', lineId: 'Lung' },
+            { gameId: '棒煎K焙茶星冰樂', lineId: '打 ⚡ Kimmy' }, { gameId: '愛濕雞摸人', lineId: '陳冠宇' },
+            { gameId: '魚姐姐`', lineId: '熊沒有' }, { gameId: '桂花紅茶', lineId: '鈺鈺' },
+            { gameId: '宋承憲', lineId: '好市多貴貴' }, { gameId: '小口愛丁丁', lineId: '虎 ｜ 小太陽' },
+            { gameId: '黑羽迷情', lineId: '至毅' }, { gameId: '宕月影熊', lineId: '熊沒有' },
+            { gameId: '大麥丁', lineId: '丁丁' }, { gameId: '熱愛啾啾', lineId: 'Sean' },
+            { gameId: '乒乒乓乓', lineId: '啟成 Matt' }, { gameId: 'Rururururu', lineId: 'Ruby' },
+            { gameId: 'Thisisraw', lineId: '(未提供)' }, { gameId: '水蒸氣', lineId: 'Yu ゆりん' },
+            { gameId: '閃熙珍', lineId: '空空' }, { gameId: '菜小酸', lineId: '蕭聖耀(菜小酸)-3.3Studio打雜' },
+            { gameId: '『小雨醬：D』', lineId: '映兒' }, { gameId: '歐拉娜(人家未成年不要騷擾)', lineId: 'ANDYHU' },
+            { gameId: '張大書', lineId: '張大書' }, { gameId: '麵包師', lineId: '國基' },
+            { gameId: '就問你怯不怯', lineId: '陳則宇' }, { gameId: '吉伊卡哞', lineId: '躍躍欲試' },
+            { gameId: 'ShirasakaRin', lineId: '✡️洲✡️' }, { gameId: '中華老爺', lineId: '中華老爺爺(時郡)' },
+            { gameId: '肉呆', lineId: 'SARU🐒' }, { gameId: '哪裡來的駱駝課', lineId: 'BOB' },
+            { gameId: '月月', lineId: 'S.Ting' }
+        ].map((m, index) => ({ ...m, uniqueId: `mem_${index}` }));
+
+        function App() {
+            const [currentUser, setCurrentUser] = useState(null);
+            const [isAdmin, setIsAdmin] = useState(false);
+            const [votes, setVotes] = useState([]);
+            const [selectedMember, setSelectedMember] = useState('');
+            const [selectedPrizes, setSelectedPrizes] = useState([]);
+            const [drawResults, setDrawResults] = useState(null);
+            const [toastMessage, setToastMessage] = useState('');
+
+            // 監聽登入狀態
+            useEffect(() => {
+                const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+                    if (user) {
+                        setCurrentUser(user);
+                        setIsAdmin(ADMIN_EMAILS.includes(user.email));
+                    } else {
+                        setCurrentUser(null);
+                        setIsAdmin(false);
+                    }
+                });
+                return () => unsubscribe();
+            }, []);
+
+            // 監聽 Firestore 資料庫即時更新
+            useEffect(() => {
+                const unsubscribe = db.collection('votes').onSnapshot((snapshot) => {
+                    const votesData = [];
+                    snapshot.forEach((doc) => { votesData.push(doc.data()); });
+                    setVotes(votesData);
+                });
+                return () => unsubscribe();
+            }, []);
+
+            const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(''), 3000); };
+
+            const handleLogin = () => {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                firebase.auth().signInWithPopup(provider).catch((error) => showToast('登入失敗：' + error.message));
+            };
+
+            const handleLogout = () => { firebase.auth().signOut().then(() => showToast('已登出')); };
+
+            const togglePrize = (prizeId) => {
+                setSelectedPrizes(prev => prev.includes(prizeId) ? prev.filter(id => id !== prizeId) : [...prev, prizeId]);
+            };
+
+            // 寫入雲端資料庫
+            const handleAddVote = async () => {
+                if (!selectedMember) { showToast('⚠️ 請選擇成員'); return; }
+                if (selectedPrizes.length === 0) { showToast('⚠️ 請至少選擇一項獎品'); return; }
+
+                const memberData = initialMembers.find(m => m.uniqueId === selectedMember);
+                try {
+                    await db.collection('votes').doc(selectedMember).set({
+                        member: memberData,
+                        prizes: selectedPrizes,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    showToast('✅ 成功送出登記！所有畫面已同步。');
+                    setSelectedMember(''); setSelectedPrizes([]);
+                } catch (error) { showToast('❌ 寫入失敗，請檢查資料庫連線'); }
+            };
+
+            // 刪除特定紀錄
+            const removeVote = async (uniqueId) => {
+                try {
+                    await db.collection('votes').doc(uniqueId).delete();
+                    showToast('🗑️ 已刪除該紀錄！');
+                } catch (error) { showToast('❌ 刪除失敗'); }
+            };
+
+            // 清空所有紀錄 (僅管理員)
+            const handleResetAll = async () => {
+                if (!isAdmin) return;
+                if (confirm('⚠️ 警告：確定要清空這週所有的登記紀錄嗎？此動作無法復原！')) {
+                    try {
+                        const snapshot = await db.collection('votes').get();
+                        const batch = db.batch();
+                        snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+                        await batch.commit();
+                        setDrawResults(null);
+                        showToast('♻️ 已清空所有紀錄，準備迎接新的一週！');
+                    } catch (error) { showToast('❌ 清空失敗'); }
+                }
+            };
+
+            // 執行隨機抽獎
+            const handleDraw = () => {
+                if (!isAdmin) { showToast('⛔ 權限不足，僅管理員可執行抽獎'); return; }
+                if (votes.length === 0) { showToast('⚠️ 目前還沒有人投票喔！'); return; }
+
+                let results = {};
+                prizes.forEach(prize => {
+                    const votersForPrize = votes.filter(v => v.prizes.includes(prize.id));
+                    let shuffledVoters = [...votersForPrize];
+                    // Fisher-Yates 洗牌演算法
+                    for (let i = shuffledVoters.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [shuffledVoters[i], shuffledVoters[j]] = [shuffledVoters[j], shuffledVoters[i]];
+                    }
+                    results[prize.id] = shuffledVoters.slice(0, prize.limit).map(v => v.member);
+                });
+
+                setDrawResults(results);
+                showToast('🎉 抽獎完成！');
+                setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
+            };
+
+            const copyResultsToClipboard = () => {
+                if (!drawResults) return;
+                let textToCopy = "🎉 週三王國活動 抽獎結果 🎉\n\n";
+                prizes.forEach(prize => {
+                    const winners = drawResults[prize.id];
+                    textToCopy += `🎁 【${prize.name}】 (共 ${prize.limit} 名)\n`;
+                    if (winners.length === 0) { textToCopy += `  無人投標\n`; } 
+                    else { winners.forEach((winner, idx) => { textToCopy += `  ${idx + 1}. 🎮 ${winner.gameId} (LINE: ${winner.lineId})\n`; }); }
+                    textToCopy += "\n";
+                });
+                textToCopy += "恭喜以上得獎者！🎊";
+
+                try {
+                    navigator.clipboard.writeText(textToCopy).then(() => showToast('📋 已複製，可貼上至 LINE！'));
+                } catch(err) {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = textToCopy;
+                    document.body.appendChild(textArea);
+                    textArea.select(); document.execCommand("copy"); document.body.removeChild(textArea);
+                    showToast('📋 已複製，可貼上至 LINE！');
+                }
+            };
+
+            return (
+                <div className="min-h-screen pb-12">
+                    <header className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 shadow-lg rounded-b-3xl">
+                        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div>
+                                <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+                                    <i className="fa-solid fa-crown text-yellow-300"></i> 週三王國活動抽獎系統
+                                </h1>
+                            </div>
+                            <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm">
+                                {currentUser ? (
+                                    <>
+                                        <div className="text-sm text-right">
+                                            <div className="font-bold">{currentUser.displayName || '已登入'}</div>
+                                            {isAdmin ? 
+                                                <span className="text-yellow-300 text-xs font-bold"><i className="fa-solid fa-shield-halved"></i> 管理員</span> : 
+                                                <span className="text-gray-300 text-xs">一般使用者</span>
+                                            }
+                                        </div>
+                                        <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg text-sm transition-colors font-bold shadow">登出</button>
+                                    </>
+                                ) : (
+                                    <button onClick={handleLogin} className="bg-white text-blue-700 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm transition-colors font-bold shadow flex items-center gap-2">
+                                        <i className="fa-brands fa-google"></i> 管理員登入
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-4xl mx-auto p-4 mt-6 space-y-6">
+                        {toastMessage && (
+                            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-gray-800 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 transition-all">
+                                {toastMessage}
+                            </div>
+                        )}
+
+                        <section className="glass-panel rounded-2xl p-6">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2 border-b pb-2">
+                                <i className="fa-solid fa-pen-to-square text-blue-500"></i> 登記意願 (可多選)
+                            </h2>
+                            <div className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">請選擇成員：</label>
+                                    <select className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" value={selectedMember} onChange={(e) => setSelectedMember(e.target.value)}>
+                                        <option value="">-- 點擊展開名單 --</option>
+                                        {initialMembers.map(member => (
+                                            <option key={member.uniqueId} value={member.uniqueId}>🎮 {member.gameId} ｜ LINE: {member.lineId}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {prizes.map(prize => (
+                                            <label key={prize.id} className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${selectedPrizes.includes(prize.id) ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                                <input type="checkbox" className="w-5 h-5 mr-3 cursor-pointer" checked={selectedPrizes.includes(prize.id)} onChange={() => togglePrize(prize.id)} />
+                                                <div className="flex-1 flex justify-between items-center">
+                                                    <span className="font-medium"><i className={`fa-solid ${prize.icon} text-gray-400 mr-2`}></i>{prize.name}</span>
+                                                    <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full font-bold">共 {prize.limit} 名</span>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                                <button onClick={handleAddVote} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors flex justify-center items-center gap-2">
+                                    <i className="fa-solid fa-cloud-arrow-up"></i> 送出登記並同步
+                                </button>
+                            </div>
+                        </section>
+
+                        <section className="glass-panel rounded-2xl p-6">
+                            <div className="flex justify-between items-center mb-4 border-b pb-2">
+                                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                    <i className="fa-solid fa-list-check text-green-500"></i> 即時登記名單 ({votes.length}人)
+                                </h2>
+                                {isAdmin && votes.length > 0 && (
+                                    <button onClick={handleResetAll} className="text-red-500 hover:bg-red-50 px-3 py-1 rounded text-sm transition-colors border border-red-200">
+                                        <i className="fa-solid fa-rotate-right"></i> 清空重置
+                                    </button>
+                                )}
+                            </div>
+                            <div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+                                {votes.length === 0 && <p className="text-center text-gray-400 py-4">目前尚無人登記</p>}
+                                {votes.map(vote => (
+                                    <div key={vote.member.uniqueId} className="flex flex-col md:flex-row justify-between items-start md:items-center bg-gray-50 p-3 rounded-lg border border-gray-100 shadow-sm gap-2">
+                                        <div>
+                                            <div className="font-bold text-gray-800">🎮 {vote.member.gameId} <span className="text-sm text-gray-500">(LINE: {vote.member.lineId})</span></div>
+                                            <div className="text-sm text-blue-600 mt-1">已選: {vote.prizes.map(pid => prizes.find(p => p.id === pid)?.name).join('、')}</div>
+                                        </div>
+                                        <button onClick={() => removeVote(vote.member.uniqueId)} className="text-red-500 hover:text-red-700 px-3 py-1 rounded text-sm transition-colors">
+                                            <i className="fa-solid fa-trash-can"></i> 刪除
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="mt-6">
+                                {isAdmin ? (
+                                    <button onClick={handleDraw} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-transform transform hover:scale-[1.02] active:scale-95 text-lg flex justify-center items-center gap-2">
+                                        <i className="fa-solid fa-wand-magic-sparkles"></i> 進行抽獎
+                                    </button>
+                                ) : (
+                                    <div className="w-full bg-gray-200 text-gray-500 font-bold py-4 px-4 rounded-xl text-center border-2 border-dashed border-gray-300">
+                                        <i className="fa-solid fa-lock mr-2"></i> 需要管理員登入才能執行抽獎
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        {drawResults && (
+                            <section className="glass-panel rounded-2xl p-6 border-2 border-yellow-400 bg-yellow-50 relative overflow-hidden">
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-yellow-200 pb-3 mb-4 gap-4 relative z-10">
+                                    <h2 className="text-2xl font-black text-yellow-800 flex items-center gap-2">
+                                        <i className="fa-solid fa-gift text-red-500"></i> 抽獎公佈結果
+                                    </h2>
+                                    <button onClick={copyResultsToClipboard} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold shadow flex items-center gap-2">
+                                        <i className="fa-regular fa-copy"></i> 複製結果
+                                    </button>
+                                </div>
+                                <div className="grid gap-4 md:grid-cols-2 relative z-10">
+                                    {prizes.map(prize => {
+                                        const winners = drawResults[prize.id] || [];
+                                        return (
+                                            <div key={prize.id} className="bg-white p-4 rounded-xl shadow-sm border border-yellow-100">
+                                                <h3 className="font-bold text-lg text-gray-800 border-b pb-2 mb-3 flex justify-between items-center">
+                                                    <span>{prize.name}</span><span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">共 {prize.limit} 名</span>
+                                                </h3>
+                                                {winners.length === 0 ? <p className="text-gray-400 text-sm text-center py-2">無人抽此項目</p> : (
+                                                    <ul className="space-y-2">
+                                                        {winners.map((winner, idx) => (
+                                                            <li key={idx} className="text-sm bg-gray-50 p-2 rounded flex flex-col">
+                                                                <span className="font-bold text-blue-700"><i className="fa-solid fa-medal text-yellow-500 mr-1"></i> {idx + 1}. {winner.gameId}</span>
+                                                                <span className="text-gray-500 text-xs ml-5">LINE: {winner.lineId}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
