@@ -5,14 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>二之國 - 週三王國活動抽獎系統 (即時同步版)</title>
     
-    <!-- 引入 React & Tailwind CSS -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
-    <!-- 引入 Firebase (Authentication + Firestore) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -99,7 +97,7 @@
             const [currentUser, setCurrentUser] = useState(null);
             const [isAdmin, setIsAdmin] = useState(false);
             const [votes, setVotes] = useState([]);
-            const [prizes, setPrizes] = useState(defaultPrizes); // 🔥 獎品數量改為動態狀態
+            const [prizes, setPrizes] = useState(defaultPrizes);
             const [selectedMember, setSelectedMember] = useState('');
             const [selectedPrizes, setSelectedPrizes] = useState([]);
             const [drawResults, setDrawResults] = useState(null);
@@ -119,7 +117,7 @@
                 return () => unsubscribe();
             }, []);
 
-            // 🔥 監聽 Firestore 資料庫：登記名單即時更新
+            // 監聽 Firestore 資料庫：登記名單即時更新
             useEffect(() => {
                 const unsubscribe = db.collection('votes').onSnapshot((snapshot) => {
                     const votesData = [];
@@ -129,13 +127,13 @@
                 return () => unsubscribe();
             }, []);
 
-            // 🔥 監聽 Firestore 資料庫：獎品數量設定即時更新
+            // 監聽 Firestore 資料庫：獎品數量設定即時更新
             useEffect(() => {
                 const unsubscribe = db.collection('system').doc('prizeConfig').onSnapshot((doc) => {
                     if (doc.exists) {
-                        setPrizes(doc.data().items); // 同步雲端的獎品數量
+                        setPrizes(doc.data().items); 
                     } else {
-                        setPrizes(defaultPrizes); // 如果雲端沒資料，就用預設值
+                        setPrizes(defaultPrizes); 
                     }
                 });
                 return () => unsubscribe();
@@ -154,20 +152,18 @@
                 setSelectedPrizes(prev => prev.includes(prizeId) ? prev.filter(id => id !== prizeId) : [...prev, prizeId]);
             };
 
-            // 🔥 調整獎品數量 (僅管理員可用)
+            // 調整獎品數量 (僅管理員可用)
             const handleUpdatePrizeLimit = async (prizeId, delta) => {
                 if (!isAdmin) return;
                 
                 const updatedPrizes = prizes.map(p => {
                     if (p.id === prizeId) {
-                        // 確保數量最低為 0，不會變成負數
                         return { ...p, limit: Math.max(0, p.limit + delta) };
                     }
                     return p;
                 });
 
                 try {
-                    // 將新的獎品數量寫入雲端資料庫
                     await db.collection('system').doc('prizeConfig').set({ items: updatedPrizes });
                 } catch (error) {
                     showToast('❌ 更新數量失敗，請檢查網路或權限');
@@ -191,8 +187,9 @@
                 } catch (error) { showToast('❌ 寫入失敗，請檢查資料庫連線'); }
             };
 
-            // 刪除特定紀錄
+            // 🔥 刪除特定紀錄 (增加權限判斷)
             const removeVote = async (uniqueId) => {
+                if (!isAdmin) { showToast('⛔ 只有管理員可以刪除紀錄'); return; }
                 try {
                     await db.collection('votes').doc(uniqueId).delete();
                     showToast('🗑️ 已刪除該紀錄！');
@@ -223,7 +220,6 @@
                 prizes.forEach(prize => {
                     const votersForPrize = votes.filter(v => v.prizes.includes(prize.id));
                     let shuffledVoters = [...votersForPrize];
-                    // Fisher-Yates 洗牌演算法
                     for (let i = shuffledVoters.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
                         [shuffledVoters[i], shuffledVoters[j]] = [shuffledVoters[j], shuffledVoters[i]];
@@ -318,7 +314,6 @@
                                                 <div className="flex-1 flex justify-between items-center">
                                                     <span className="font-medium"><i className={`fa-solid ${prize.icon} text-gray-400 mr-2`}></i>{prize.name}</span>
                                                     
-                                                    {/* 🔥 動態修改獎品數量的控制區塊 */}
                                                     {isAdmin ? (
                                                         <div className="flex items-center bg-blue-100 rounded-full overflow-hidden text-xs font-bold border border-blue-200" onClick={(e) => e.preventDefault()}>
                                                             <button 
@@ -370,9 +365,13 @@
                                             <div className="font-bold text-gray-800">🎮 {vote.member.gameId} <span className="text-sm text-gray-500">(LINE: {vote.member.lineId})</span></div>
                                             <div className="text-sm text-blue-600 mt-1">已選: {vote.prizes.map(pid => prizes.find(p => p.id === pid)?.name).join('、')}</div>
                                         </div>
-                                        <button onClick={() => removeVote(vote.member.uniqueId)} className="text-red-500 hover:text-red-700 px-3 py-1 rounded text-sm transition-colors">
-                                            <i className="fa-solid fa-trash-can"></i> 刪除
-                                        </button>
+                                        
+                                        {/* 🔥 只有管理員才看得到刪除按鈕 */}
+                                        {isAdmin && (
+                                            <button onClick={() => removeVote(vote.member.uniqueId)} className="text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded text-sm transition-colors">
+                                                <i className="fa-solid fa-trash-can"></i> 刪除
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                             </div>
