@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>二之國 - 王國活動抽獎系統 (即時同步版)</title>
+    <title>二之國 - 喵咪本周活動抽獎系統 (即時同步版)</title>
     
     <!-- 引入 React & Tailwind CSS -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -58,6 +58,7 @@
 
         const { useState, useEffect } = React;
 
+        // 🔥 更新：擴充為 10 個獎項
         const defaultPrizes = [
             { id: 'prize_1', name: '屬性增幅', limit: 10, icon: 'fa-arrow-up-right-dots' },
             { id: 'prize_2', name: '強化娃娃', limit: 4, icon: 'fa-robot' },
@@ -71,7 +72,6 @@
             { id: 'prize_10', name: '最強王國-競爭水晶球自選箱', limit: 1, icon: 'fa-gift' }
         ];
 
-        // 🔥 更新：最新的王國成員名單
         const initialMembers = [
             { gameId: '竹息辣寶貝', lineId: 'Nick' }, { gameId: '這是我約鯊鯊', lineId: 'M' },
             { gameId: '歐娜', lineId: 'ANDYHU' }, { gameId: '雪山上の醬板鴨', lineId: 'Hank Shen' },
@@ -109,6 +109,7 @@
             const [drawResults, setDrawResults] = useState(null);
             const [toastMessage, setToastMessage] = useState('');
 
+            // 監聽登入狀態
             useEffect(() => {
                 const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
                     if (user) {
@@ -125,6 +126,7 @@
                 return () => unsubscribe();
             }, []);
 
+            // 監聽 Firestore 資料庫：登記名單
             useEffect(() => {
                 const unsubscribe = db.collection('votes').onSnapshot((snapshot) => {
                     const votesData = [];
@@ -134,10 +136,12 @@
                 return () => unsubscribe();
             }, []);
 
+            // 🔥 智能合併邏輯：結合雲端設定與新擴充的獎品
             useEffect(() => {
                 const unsubscribe = db.collection('system').doc('prizeConfig').onSnapshot((doc) => {
                     if (doc.exists) { 
                         const cloudPrizes = doc.data().items;
+                        // 確保新的獎品（雲端沒有的）也會被加進去，舊的獎品則保留雲端設定的數量
                         const mergedPrizes = defaultPrizes.map(defaultPrize => {
                             const cloudPrize = cloudPrizes.find(cp => cp.id === defaultPrize.id);
                             return cloudPrize ? { ...defaultPrize, limit: cloudPrize.limit } : defaultPrize;
@@ -152,6 +156,7 @@
 
             const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(''), 3000); };
 
+            // 密碼登入
             const handlePasswordLogin = () => {
                 const pwd = window.prompt('請輸入管理員專屬密碼：');
                 if (pwd === 'meow') {
@@ -182,6 +187,7 @@
                 setSelectedPrizes(prev => prev.includes(prizeId) ? prev.filter(id => id !== prizeId) : [...prev, prizeId]);
             };
 
+            // 調整獎品數量
             const handleUpdatePrizeLimit = async (prizeId, delta) => {
                 if (!isAdmin) return;
                 const updatedPrizes = prizes.map(p => {
@@ -193,6 +199,7 @@
                 } catch (error) { showToast('❌ 更新數量失敗'); }
             };
 
+            // 送出登記
             const handleAddVote = async () => {
                 if (!selectedMember) { showToast('⚠️ 請選擇成員'); return; }
                 if (selectedPrizes.length === 0) { showToast('⚠️ 請至少選擇一項獎品'); return; }
@@ -207,6 +214,7 @@
                 } catch (error) { showToast('❌ 寫入失敗'); }
             };
 
+            // 刪除特定紀錄
             const removeVote = async (uniqueId) => {
                 if (!isAdmin) { showToast('⛔ 只有管理員可以刪除紀錄'); return; }
                 try {
@@ -215,6 +223,7 @@
                 } catch (error) { showToast('❌ 刪除失敗'); }
             };
 
+            // 清空所有紀錄
             const handleResetAll = async () => {
                 if (!isAdmin) return;
                 if (confirm('⚠️ 警告：確定要清空這週所有的登記紀錄嗎？此動作無法復原！')) {
@@ -229,6 +238,7 @@
                 }
             };
 
+            // 執行隨機抽獎
             const handleDraw = () => {
                 if (!isAdmin) { showToast('⛔ 權限不足'); return; }
                 if (votes.length === 0) { showToast('⚠️ 目前還沒有人投票喔！'); return; }
@@ -251,7 +261,7 @@
 
             const copyResultsToClipboard = () => {
                 if (!drawResults) return;
-                let textToCopy = "🎉 週三王國活動 抽獎結果 🎉\n\n";
+                let textToCopy = "🎉 喵咪本周活動 抽獎結果 🎉\n\n";
                 prizes.forEach(prize => {
                     const winners = drawResults[prize.id];
                     textToCopy += `🎁 【${prize.name}】 (共 ${prize.limit} 名)\n`;
@@ -282,7 +292,7 @@
                         <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
                             <div>
                                 <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-                                    <i className="fa-solid fa-crown text-yellow-300"></i> 週三王國活動抽獎系統
+                                    <i className="fa-solid fa-crown text-yellow-300"></i> 喵咪本周活動抽獎系統
                                 </h1>
                             </div>
                             <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm">
