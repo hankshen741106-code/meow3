@@ -5,14 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>二之國 - 週三王國活動抽獎系統 (即時同步版)</title>
     
-    <!-- 引入 React & Tailwind CSS -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
-    <!-- 引入 Firebase (Authentication + Firestore) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -257,8 +255,8 @@
                     if (winners.length === 0) { textToCopy += `  無人投標\n`; } 
                     else { 
                         winners.forEach((winner, idx) => { 
-                            // 🔥 這裡在 LINE ID 前面加上了 @，複製出去就會有標記功能
-                            textToCopy += `  ${idx + 1}. 🎮 ${winner.gameId} (@${winner.lineId})\n`; 
+                            // 🔥 移除括號，保留 @ 與 LINE ID
+                            textToCopy += `  ${idx + 1}. 🎮 ${winner.gameId} @${winner.lineId}\n`; 
                         }); 
                     }
                     textToCopy += "\n";
@@ -437,7 +435,6 @@
                                                         {winners.map((winner, idx) => (
                                                             <li key={idx} className="text-sm bg-gray-50 p-2 rounded flex flex-col">
                                                                 <span className="font-bold text-blue-700"><i className="fa-solid fa-medal text-yellow-500 mr-1"></i> {idx + 1}. {winner.gameId}</span>
-                                                                {/* 🔥 畫面顯示上也加上了 @ */}
                                                                 <span className="text-gray-500 text-xs ml-5">LINE: @{winner.lineId}</span>
                                                             </li>
                                                         ))}
