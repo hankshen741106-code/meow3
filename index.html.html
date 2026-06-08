@@ -18,19 +18,28 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <style>
-        /* 🔥 全新升級：全網頁背景與毛玻璃特效 */
+        /* 🔥 寶可夢游標特效 (精靈球) */
+        body, html {
+            cursor: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png') 15 15, auto !important;
+        }
+        
+        /* 🔥 可點擊區域游標特效 (大師球) */
+        button, select, input, label, a, .cursor-pointer {
+            cursor: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png') 15 15, pointer !important;
+        }
+
+        /* 全網頁背景與毛玻璃特效 */
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             color: #1f2937; 
             margin: 0;
-            /* 將您的圖片設定為全螢幕固定背景 */
             background-image: url('./banner.png');
             background-size: cover;
             background-position: center center;
             background-attachment: fixed;
         }
         
-        /* 加上一層微弱的深色霧化遮罩，讓前面的白色面板更清楚 */
+        /* 微霧化遮罩 */
         body::before {
             content: '';
             position: fixed;
@@ -43,7 +52,7 @@
             z-index: -1;
         }
 
-        /* 調整面板為 85% 白色半透明，讓背景圖透出來 */
+        /* 面板半透明設定 */
         .glass-panel { 
             background: rgba(255, 255, 255, 0.85); 
             backdrop-filter: blur(12px); 
@@ -89,12 +98,12 @@
 
         const { useState, useEffect } = React;
 
+        // 🔥 更新：修改名稱並刪除「強化娃娃」
         const defaultPrizes = [
-            { id: 'prize_1', name: '屬性增幅', limit: 10, icon: 'fa-arrow-up-right-dots' },
-            { id: 'prize_2', name: '強化娃娃', limit: 4, icon: 'fa-robot' },
-            { id: 'prize_3', name: '防具小魔人', limit: 2, icon: 'fa-shield-halved' },
-            { id: 'prize_4', name: '四葉幸運草束', limit: 5, icon: 'fa-clover' },
-            { id: 'prize_5', name: '克萊塔的裝備支援箱', limit: 5, icon: 'fa-box-open' },
+            { id: 'prize_1', name: '王國活動-屬性增幅', limit: 10, icon: 'fa-arrow-up-right-dots' },
+            { id: 'prize_3', name: '王國活動-防具小魔人', limit: 2, icon: 'fa-shield-halved' },
+            { id: 'prize_4', name: '王國活動-四葉幸運草束', limit: 5, icon: 'fa-clover' },
+            { id: 'prize_5', name: '王國活動-裝備支援箱', limit: 5, icon: 'fa-box-open' },
             { id: 'prize_6', name: '王國活動-娃娃', limit: 1, icon: 'fa-chess-king' },
             { id: 'prize_7', name: '遺物-娃娃', limit: 1, icon: 'fa-gem' },
             { id: 'prize_8', name: '遺物-競爭水晶球自選箱', limit: 1, icon: 'fa-box-archive' },
@@ -168,6 +177,7 @@
                 const unsubscribe = db.collection('system').doc('prizeConfig').onSnapshot((doc) => {
                     if (doc.exists) { 
                         const cloudPrizes = doc.data().items;
+                        // 確保新的獎品（雲端沒有的）也會被加進去，舊的獎品則保留雲端設定的數量
                         const mergedPrizes = defaultPrizes.map(defaultPrize => {
                             const cloudPrize = cloudPrizes.find(cp => cp.id === defaultPrize.id);
                             return cloudPrize ? { ...defaultPrize, limit: cloudPrize.limit } : defaultPrize;
@@ -308,9 +318,7 @@
 
             return (
                 <div className="min-h-screen pb-12">
-                    {/* 頂部標題區塊 */}
                     <header className="relative shadow-lg rounded-b-3xl overflow-hidden bg-gray-900">
-                        {/* 遊戲背景圖作為 Header 背景 */}
                         <div 
                             className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 mix-blend-screen"
                             style={{ backgroundImage: "url('./banner.png')" }}
