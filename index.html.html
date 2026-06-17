@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>二之國 - 喵咪本周活動抽獎系統 (即時同步版)</title>
     
+    <!-- 引入 React & Tailwind CSS -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
+    <!-- 引入 Firebase (Authentication + Firestore) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -96,11 +98,9 @@
 
         const { useState, useEffect } = React;
 
-        // 🔥 更新：加入 最強王國-稀有戰場裝飾品 & 最強王國-王城技能書選擇箱
+        // 🔥 更新：修改名稱並刪除「強化娃娃」
         const defaultPrizes = [
-            { id: 'prize_11', name: '王國活動-火增幅', limit: 10, icon: 'fa-fire' },
-            { id: 'prize_12', name: '王國活動-木增幅', limit: 10, icon: 'fa-leaf' },
-            { id: 'prize_13', name: '王國活動-水增幅', limit: 10, icon: 'fa-droplet' },
+            { id: 'prize_1', name: '王國活動-屬性增幅', limit: 10, icon: 'fa-arrow-up-right-dots' },
             { id: 'prize_3', name: '王國活動-防具小魔人', limit: 2, icon: 'fa-shield-halved' },
             { id: 'prize_4', name: '王國活動-四葉幸運草束', limit: 5, icon: 'fa-clover' },
             { id: 'prize_5', name: '王國活動-裝備支援箱', limit: 5, icon: 'fa-box-open' },
@@ -108,13 +108,11 @@
             { id: 'prize_7', name: '遺物-娃娃', limit: 1, icon: 'fa-gem' },
             { id: 'prize_8', name: '遺物-競爭水晶球自選箱', limit: 1, icon: 'fa-box-archive' },
             { id: 'prize_9', name: '最強王國-娃娃', limit: 1, icon: 'fa-crown' },
-            { id: 'prize_10', name: '最強王國-競爭水晶球自選箱', limit: 1, icon: 'fa-gift' },
-            { id: 'prize_14', name: '最強王國-稀有戰場裝飾品', limit: 1, icon: 'fa-medal' },
-            { id: 'prize_15', name: '最強王國-王城技能書選擇箱', limit: 1, icon: 'fa-book' }
+            { id: 'prize_10', name: '最強王國-競爭水晶球自選箱', limit: 1, icon: 'fa-gift' }
         ];
 
         const initialMembers = [
-            { gameId: '竹息辣寶貝', lineId: 'Nick' }, { gameId: '這是我的鯊鯊', lineId: 'M' },
+            { gameId: '竹息辣寶貝', lineId: 'Nick' }, { gameId: '這是我約鯊鯊', lineId: 'M' },
             { gameId: '歐娜', lineId: 'ANDYHU' }, { gameId: '雪山上の醬板鴨', lineId: 'Hank Shen' },
             { gameId: 'Anicesiou', lineId: 'Zihsiou' }, { gameId: 'Oo卡肉絲oO', lineId: 'Carlos.Tseng' },
             { gameId: '國際優狼', lineId: 'NIK' }, { gameId: '含式豆撫鍋', lineId: 'M・' },
@@ -129,14 +127,14 @@
             { gameId: '絢月', lineId: 'S.Ting' }, { gameId: '愛麗絲T', lineId: 'Alice' },
             { gameId: '體育系', lineId: 'MⓂ️' }, { gameId: '柴柴泡溫泉', lineId: '白白x柴' },
             { gameId: '阿輔', lineId: '阿輔' }, { gameId: 'Hippoooo', lineId: 'Hippo' },
-            { gameId: '棒煎K培茶星冰樂', lineId: '打 ⚡ Kimmy' }, { gameId: '愛濕雞摸人', lineId: '陳冠宇' },
+            { gameId: '棒煎K焙茶星冰樂', lineId: '打 ⚡ Kimmy' }, { gameId: '愛濕雞摸人', lineId: '陳冠宇' },
             { gameId: '魚姊姊', lineId: '熊沒有' }, { gameId: '桂花紅茶', lineId: '鈺鈺' },
             { gameId: '宋承憲', lineId: '好市多貴貴' }, { gameId: '黑羽迷情', lineId: '至毅' },
             { gameId: '大麥丁', lineId: '丁丁' }, { gameId: '熱愛啾啾', lineId: 'Sean' },
-            { gameId: '乒乓乒乓', lineId: '啟成 Matt' }, { gameId: 'Rururururu', lineId: 'Ruby' },
-            { gameId: '閔熙珍', lineId: '空空' }, { gameId: '菜小酸', lineId: '蕭聖耀(菜小酸)-3.3Studio打雜' },
+            { gameId: '乒乒乓乓', lineId: '啟成 Matt' }, { gameId: 'Rururururu', lineId: 'Ruby' },
+            { gameId: '閃熙珍', lineId: '空空' }, { gameId: '菜小酸', lineId: '蕭聖耀(菜小酸)-3.3Studio打雜' },
             { gameId: '『小雨醬：D』', lineId: '映兒' }, { gameId: '張大書', lineId: '張大書' },
-            { gameId: '麵包師', lineId: '國基' }, { gameId: '就問你呿不呿', lineId: '陳則宇' },
+            { gameId: '麵包師', lineId: '國基' }, { gameId: '就問你怯不怯', lineId: '陳則宇' },
             { gameId: 'ShirasakaRin', lineId: '✡️洲✡️' }, { gameId: 'かわいい肉呆呆', lineId: '𝕊𝔸ℝ𝕌😳' }
         ].map((m, index) => ({ ...m, uniqueId: `mem_${index}` }));
 
@@ -175,11 +173,11 @@
                 return () => unsubscribe();
             }, []);
 
-            // 智能合併雲端資料
             useEffect(() => {
                 const unsubscribe = db.collection('system').doc('prizeConfig').onSnapshot((doc) => {
                     if (doc.exists) { 
                         const cloudPrizes = doc.data().items;
+                        // 確保新的獎品（雲端沒有的）也會被加進去，舊的獎品則保留雲端設定的數量
                         const mergedPrizes = defaultPrizes.map(defaultPrize => {
                             const cloudPrize = cloudPrizes.find(cp => cp.id === defaultPrize.id);
                             return cloudPrize ? { ...defaultPrize, limit: cloudPrize.limit } : defaultPrize;
@@ -235,26 +233,14 @@
                 } catch (error) { showToast('❌ 更新數量失敗'); }
             };
 
-            // 送出登記
             const handleAddVote = async () => {
                 if (!selectedMember) { showToast('⚠️ 請選擇成員'); return; }
                 if (selectedPrizes.length === 0) { showToast('⚠️ 請至少選擇一項獎品'); return; }
 
-                // 終極防護：送出時再次濾除數量為 0 的選項
-                const validSelectedPrizes = selectedPrizes.filter(pid => {
-                    const prizeObj = prizes.find(p => p.id === pid);
-                    return prizeObj && prizeObj.limit > 0;
-                });
-
-                if (validSelectedPrizes.length === 0) {
-                    showToast('⚠️ 您勾選的獎項目前已額滿或未開放，請重新選擇');
-                    return;
-                }
-
                 const memberData = initialMembers.find(m => m.uniqueId === selectedMember);
                 try {
                     await db.collection('votes').doc(selectedMember).set({
-                        member: memberData, prizes: validSelectedPrizes, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        member: memberData, prizes: selectedPrizes, timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     showToast('✅ 成功送出登記！');
                     setSelectedMember(''); setSelectedPrizes([]);
@@ -283,7 +269,6 @@
                 }
             };
 
-            // 執行隨機抽獎
             const handleDraw = () => {
                 if (!isAdmin) { showToast('⛔ 權限不足'); return; }
                 if (votes.length === 0) { showToast('⚠️ 目前還沒有人投票喔！'); return; }
@@ -397,66 +382,36 @@
                                 </div>
                                 <div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {prizes.map(prize => {
-                                            // 判斷數量是否為 0
-                                            const isDisabled = prize.limit <= 0;
-                                            const isSelected = selectedPrizes.includes(prize.id) && !isDisabled; 
-                                            
-                                            // 動態變更面板樣式
-                                            let labelClasses = "flex items-center p-4 border rounded-xl transition-all ";
-                                            if (isDisabled) {
-                                                labelClasses += "bg-gray-200/60 border-gray-300 opacity-80 cursor-not-allowed";
-                                            } else if (isSelected) {
-                                                labelClasses += "border-blue-500 bg-blue-50/90 ring-1 ring-blue-500 cursor-pointer";
-                                            } else {
-                                                labelClasses += "border-gray-300 hover:bg-gray-50/80 bg-white/70 cursor-pointer";
-                                            }
-
-                                            return (
-                                                <label key={prize.id} className={labelClasses}>
-                                                    <input 
-                                                        type="checkbox" 
-                                                        className={`w-5 h-5 mr-3 ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`} 
-                                                        checked={isSelected} 
-                                                        disabled={isDisabled}
-                                                        onChange={() => { if(!isDisabled) togglePrize(prize.id); }} 
-                                                    />
-                                                    <div className="flex-1 flex justify-between items-center">
-                                                        <span className={`font-bold flex items-center ${isDisabled ? 'text-gray-500' : 'text-gray-800'}`}>
-                                                            <i className={`fa-solid ${prize.icon} ${isDisabled ? 'text-gray-400' : 'text-blue-500'} mr-2`}></i>
-                                                            {prize.name}
-                                                            {/* 數量為 0 時的防呆標籤 */}
-                                                            {isDisabled && !isAdmin && <span className="ml-2 text-xs text-red-600 bg-red-100/80 px-2 py-0.5 rounded font-bold border border-red-200">未開放</span>}
-                                                        </span>
-                                                        
-                                                        {isAdmin ? (
-                                                            <div className="flex items-center bg-blue-100 rounded-full overflow-hidden text-xs font-bold border border-blue-300 shadow-sm" onClick={(e) => e.preventDefault()}>
-                                                                <button 
-                                                                    type="button"
-                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUpdatePrizeLimit(prize.id, -1); }} 
-                                                                    className="px-3 py-1 hover:bg-blue-200 text-blue-700 transition-colors"
-                                                                    disabled={prize.limit <= 0}
-                                                                >
-                                                                    <i className="fa-solid fa-minus"></i>
-                                                                </button>
-                                                                <span className="px-2 text-blue-900 py-1 border-x border-blue-300 bg-white">共 {prize.limit} 名</span>
-                                                                <button 
-                                                                    type="button"
-                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUpdatePrizeLimit(prize.id, 1); }} 
-                                                                    className="px-3 py-1 hover:bg-blue-200 text-blue-700 transition-colors"
-                                                                >
-                                                                    <i className="fa-solid fa-plus"></i>
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <span className={`text-xs px-2 py-1 rounded-full font-bold border ${isDisabled ? 'bg-gray-300 text-gray-500 border-gray-400' : 'bg-gray-200 text-gray-800 border-gray-300'}`}>
-                                                                {isDisabled ? '0 名' : `共 ${prize.limit} 名`}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </label>
-                                            );
-                                        })}
+                                        {prizes.map(prize => (
+                                            <label key={prize.id} className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${selectedPrizes.includes(prize.id) ? 'border-blue-500 bg-blue-50/90 ring-1 ring-blue-500' : 'border-gray-300 hover:bg-gray-50/80 bg-white/70'}`}>
+                                                <input type="checkbox" className="w-5 h-5 mr-3 cursor-pointer" checked={selectedPrizes.includes(prize.id)} onChange={() => togglePrize(prize.id)} />
+                                                <div className="flex-1 flex justify-between items-center">
+                                                    <span className="font-bold text-gray-800"><i className={`fa-solid ${prize.icon} text-blue-500 mr-2`}></i>{prize.name}</span>
+                                                    
+                                                    {isAdmin ? (
+                                                        <div className="flex items-center bg-blue-100 rounded-full overflow-hidden text-xs font-bold border border-blue-300" onClick={(e) => e.preventDefault()}>
+                                                            <button 
+                                                                type="button"
+                                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUpdatePrizeLimit(prize.id, -1); }} 
+                                                                className="px-3 py-1 hover:bg-blue-200 text-blue-700 transition-colors"
+                                                            >
+                                                                <i className="fa-solid fa-minus"></i>
+                                                            </button>
+                                                            <span className="px-2 text-blue-900 py-1 border-x border-blue-300 bg-white">共 {prize.limit} 名</span>
+                                                            <button 
+                                                                type="button"
+                                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUpdatePrizeLimit(prize.id, 1); }} 
+                                                                className="px-3 py-1 hover:bg-blue-200 text-blue-700 transition-colors"
+                                                            >
+                                                                <i className="fa-solid fa-plus"></i>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs bg-gray-200 text-gray-800 px-2 py-1 rounded-full font-bold border border-gray-300">共 {prize.limit} 名</span>
+                                                    )}
+                                                </div>
+                                            </label>
+                                        ))}
                                     </div>
                                 </div>
                                 <button onClick={handleAddVote} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors flex justify-center items-center gap-2 border border-blue-500">
@@ -482,8 +437,7 @@
                                     <div key={vote.member.uniqueId} className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 p-3 rounded-lg border border-gray-200 shadow-sm gap-2">
                                         <div>
                                             <div className="font-bold text-gray-900">🎮 {vote.member.gameId} <span className="text-sm text-gray-600">(LINE: {vote.member.lineId})</span></div>
-                                            {/* filter(Boolean) 確保被刪除的獎項不會留下空逗號 */}
-                                            <div className="text-sm text-blue-700 mt-1 font-semibold">已選: {vote.prizes.map(pid => prizes.find(p => p.id === pid)?.name).filter(Boolean).join('、')}</div>
+                                            <div className="text-sm text-blue-700 mt-1 font-semibold">已選: {vote.prizes.map(pid => prizes.find(p => p.id === pid)?.name).join('、')}</div>
                                         </div>
                                         
                                         {isAdmin && (
