@@ -5,23 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>二之國 - 喵咪本周活動抽獎系統 (即時同步版)</title>
     
+    <!-- 引入 React & Tailwind CSS -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
+    <!-- 引入 Firebase (Authentication + Firestore) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <style>
-        /* 🔥 寶可夢游標特效 (精靈球) */
+        /* 寶可夢游標特效 */
         body, html {
             cursor: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png') 15 15, auto !important;
         }
-        
-        /* 🔥 可點擊區域游標特效 (大師球) */
         button, select, input, label, a, .cursor-pointer {
             cursor: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png') 15 15, pointer !important;
         }
@@ -36,8 +36,6 @@
             background-position: center center;
             background-attachment: fixed;
         }
-        
-        /* 微霧化遮罩 */
         body::before {
             content: '';
             position: fixed;
@@ -159,19 +157,25 @@
                 return () => unsubscribe();
             }, []);
 
+            // 🔥 增加防護：讀取名單時確保資料不會造成系統崩潰
             useEffect(() => {
                 const unsubscribe = db.collection('votes').onSnapshot((snapshot) => {
                     const votesData = [];
-                    snapshot.forEach((doc) => { votesData.push(doc.data()); });
+                    snapshot.forEach((doc) => { 
+                        if(doc.data()) { votesData.push(doc.data()); }
+                    });
                     setVotes(votesData);
+                }, (error) => {
+                    console.error("資料庫讀取錯誤", error);
                 });
                 return () => unsubscribe();
             }, []);
 
+            // 🔥 增加防護：讀取獎品設定時避免遇到空值
             useEffect(() => {
                 const unsubscribe = db.collection('system').doc('prizeConfig').onSnapshot((doc) => {
-                    if (doc.exists) { 
-                        const cloudPrizes = doc.data().items;
+                    if (doc.exists && doc.data() && doc.data().items) { 
+                        const cloudPrizes = doc.data().items || [];
                         const mergedPrizes = defaultPrizes.map(defaultPrize => {
                             const cloudPrize = cloudPrizes.find(cp => cp.id === defaultPrize.id);
                             return cloudPrize ? { ...defaultPrize, limit: cloudPrize.limit } : defaultPrize;
@@ -244,7 +248,9 @@
                 const memberData = initialMembers.find(m => m.uniqueId === selectedMember);
                 try {
                     await db.collection('votes').doc(selectedMember).set({
-                        member: memberData, prizes: validSelectedPrizes, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        member: memberData || { gameId: '未知', lineId: '未知', uniqueId: selectedMember }, 
+                        prizes: validSelectedPrizes, 
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     showToast('✅ 成功送出登記！');
                     setSelectedMember(''); setSelectedPrizes([]);
@@ -253,6 +259,7 @@
 
             const removeVote = async (uniqueId) => {
                 if (!isAdmin) { showToast('⛔ 只有管理員可以刪除紀錄'); return; }
+                if (!uniqueId) return;
                 try {
                     await db.collection('votes').doc(uniqueId).delete();
                     showToast('🗑️ 已刪除該紀錄！');
@@ -279,13 +286,15 @@
 
                 let results = {};
                 prizes.forEach(prize => {
-                    const votersForPrize = votes.filter(v => v.prizes.includes(prize.id));
+                    // 🔥 增加防護：確保 v.prizes 存在才進行過濾
+                    const votersForPrize = votes.filter(v => v.prizes && Array.isArray(v.prizes) && v.prizes.includes(prize.id));
                     let shuffledVoters = [...votersForPrize];
                     for (let i = shuffledVoters.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
                         [shuffledVoters[i], shuffledVoters[j]] = [shuffledVoters[j], shuffledVoters[i]];
                     }
-                    results[prize.id] = shuffledVoters.slice(0, prize.limit).map(v => v.member);
+                    // 🔥 增加防護：確保 member 資料存在
+                    results[prize.id] = shuffledVoters.slice(0, prize.limit).map(v => v.member || { gameId: '未知成員', lineId: '未知' });
                 });
 
                 setDrawResults(results);
@@ -297,12 +306,15 @@
                 if (!drawResults) return;
                 let textToCopy = "🎉 喵咪本周活動 抽獎結果 🎉\n\n";
                 prizes.forEach(prize => {
-                    const winners = drawResults[prize.id];
+                    const winners = drawResults[prize.id] || [];
                     textToCopy += `🎁 【${prize.name}】 (共 ${prize.limit} 名)\n`;
                     if (winners.length === 0) { textToCopy += `  無人投標\n`; } 
                     else { 
                         winners.forEach((winner, idx) => { 
-                            textToCopy += `  ${idx + 1}. 🎮 ${winner.gameId} @${winner.lineId}\n`; 
+                            // 🔥 增加防護
+                            const gameId = winner?.gameId || '未知';
+                            const lineId = winner?.lineId || '未知';
+                            textToCopy += `  ${idx + 1}. 🎮 ${gameId} @${lineId}\n`; 
                         }); 
                     }
                     textToCopy += "\n";
@@ -464,25 +476,32 @@
                             </div>
                             <div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
                                 {votes.length === 0 && <p className="text-center text-gray-600 font-medium py-4">目前尚無人登記</p>}
-                                {votes.map(vote => (
-                                    <div key={vote.member.uniqueId} className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 p-3 rounded-lg border border-gray-200 shadow-sm gap-2">
-                                        <div>
-                                            <div className="font-bold text-gray-900">🎮 {vote.member.gameId} <span className="text-sm text-gray-600">(LINE: {vote.member.lineId})</span></div>
-                                            <div className="text-sm text-blue-700 mt-1 font-semibold">
-                                                已選: {vote.prizes.map(pid => {
-                                                    const prizeObj = prizes.find(p => p.id === pid);
-                                                    return prizeObj ? prizeObj.name : null;
-                                                }).filter(Boolean).join('、')}
+                                {votes.map((vote, index) => {
+                                    // 🔥 增加防護：避免讀取不到 member 發生錯誤
+                                    const memberName = vote?.member?.gameId || '未知成員';
+                                    const memberLine = vote?.member?.lineId || '未知';
+                                    const uniqueKey = vote?.member?.uniqueId || `vote_${index}`;
+                                    
+                                    return (
+                                        <div key={uniqueKey} className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white/80 p-3 rounded-lg border border-gray-200 shadow-sm gap-2">
+                                            <div>
+                                                <div className="font-bold text-gray-900">🎮 {memberName} <span className="text-sm text-gray-600">(LINE: {memberLine})</span></div>
+                                                <div className="text-sm text-blue-700 mt-1 font-semibold">
+                                                    已選: {(vote.prizes || []).map(pid => {
+                                                        const prizeObj = prizes.find(p => p.id === pid);
+                                                        return prizeObj ? prizeObj.name : null;
+                                                    }).filter(Boolean).join('、') || '無紀錄'}
+                                                </div>
                                             </div>
+                                            
+                                            {isAdmin && vote?.member?.uniqueId && (
+                                                <button onClick={() => removeVote(vote.member.uniqueId)} className="text-red-500 hover:text-red-700 hover:bg-red-100 px-3 py-1 rounded text-sm transition-colors font-bold">
+                                                    <i className="fa-solid fa-trash-can"></i> 刪除
+                                                </button>
+                                            )}
                                         </div>
-                                        
-                                        {isAdmin && (
-                                            <button onClick={() => removeVote(vote.member.uniqueId)} className="text-red-500 hover:text-red-700 hover:bg-red-100 px-3 py-1 rounded text-sm transition-colors font-bold">
-                                                <i className="fa-solid fa-trash-can"></i> 刪除
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
 
                             <div className="mt-6">
@@ -518,12 +537,17 @@
                                                 </h3>
                                                 {winners.length === 0 ? <p className="text-gray-500 text-sm text-center py-2 font-medium">無人抽此項目</p> : (
                                                     <ul className="space-y-2">
-                                                        {winners.map((winner, idx) => (
-                                                            <li key={idx} className="text-sm bg-gray-50 p-2 rounded flex flex-col border border-gray-100">
-                                                                <span className="font-bold text-blue-800"><i className="fa-solid fa-medal text-yellow-500 mr-1"></i> {idx + 1}. {winner.gameId}</span>
-                                                                <span className="text-gray-600 text-xs ml-5 font-semibold">LINE: @{winner.lineId}</span>
-                                                            </li>
-                                                        ))}
+                                                        {winners.map((winner, idx) => {
+                                                            // 🔥 增加防護
+                                                            const gameId = winner?.gameId || '未知';
+                                                            const lineId = winner?.lineId || '未知';
+                                                            return (
+                                                                <li key={idx} className="text-sm bg-gray-50 p-2 rounded flex flex-col border border-gray-100">
+                                                                    <span className="font-bold text-blue-800"><i className="fa-solid fa-medal text-yellow-500 mr-1"></i> {idx + 1}. {gameId}</span>
+                                                                    <span className="text-gray-600 text-xs ml-5 font-semibold">LINE: @{lineId}</span>
+                                                                </li>
+                                                            )
+                                                        })}
                                                     </ul>
                                                 )}
                                             </div>
