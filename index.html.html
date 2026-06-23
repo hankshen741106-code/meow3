@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>二之國 - 喵咪本周活動抽獎系統</title>
     
+    <!-- 引入 React & Tailwind CSS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
+    <!-- 引入 Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -61,6 +63,7 @@
     </style>
 </head>
 <body>
+    <!-- 防護機制：如果 LINE 卡死，至少會顯示這個引導畫面 -->
     <div id="root">
         <div style="padding: 40px 20px; text-align: center; font-family: sans-serif; background: rgba(255,255,255,0.9); margin: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
             <h2 style="color: #2563eb; font-size: 24px; font-weight: bold; margin-bottom: 10px;">⏳ 系統努力載入中...</h2>
@@ -358,6 +361,42 @@
                 }
             };
 
+            // 🔥 新增：一鍵備份至 Excel / Google Sheets 的功能
+            const handleBackupToExcel = () => {
+                if (votes.length === 0) {
+                    showToast('⚠️ 目前沒有資料可以備份');
+                    return;
+                }
+
+                let tsvContent = "遊戲ID\tLINE ID\t已登記獎項\n";
+
+                votes.forEach(vote => {
+                    const gameId = (vote && vote.member && vote.member.gameId) ? vote.member.gameId : '未知成員';
+                    const lineId = (vote && vote.member && vote.member.lineId) ? vote.member.lineId : '未知';
+                    
+                    const selectedPrizeNames = (vote && vote.prizes ? vote.prizes : []).map(pid => {
+                        const prizeObj = prizes.find(p => p.id === pid);
+                        return prizeObj ? prizeObj.name : null;
+                    }).filter(Boolean).join('、') || '無紀錄';
+
+                    tsvContent += `${gameId}\t${lineId}\t${selectedPrizeNames}\n`;
+                });
+
+                try {
+                    navigator.clipboard.writeText(tsvContent).then(() => {
+                        showToast('📋 備份已複製！請直接打開 Excel 貼上 (Ctrl+V)');
+                    });
+                } catch(err) {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = tsvContent;
+                    document.body.appendChild(textArea);
+                    textArea.select(); 
+                    document.execCommand("copy"); 
+                    document.body.removeChild(textArea);
+                    showToast('📋 備份已複製！請直接打開 Excel 貼上 (Ctrl+V)');
+                }
+            };
+
             return (
                 <div className="min-h-screen pb-12">
                     <header className="relative shadow-lg rounded-b-3xl overflow-hidden bg-gray-900">
@@ -490,15 +529,22 @@
                         </section>
 
                         <section className="glass-panel rounded-2xl p-6">
-                            <div className="flex justify-between items-center mb-4 border-b border-gray-300 pb-2">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-gray-300 pb-3 gap-3">
                                 <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                                     <i className="fa-solid fa-list-check text-green-600"></i> 即時登記名單 ({votes.length}人)
                                 </h2>
-                                {isAdmin && votes.length > 0 && (
-                                    <button onClick={handleResetAll} className="text-red-600 hover:bg-red-100 px-3 py-1 rounded text-sm transition-colors border border-red-300 bg-white/80 font-bold">
-                                        <i className="fa-solid fa-rotate-right"></i> 清空重置
+                                <div className="flex gap-2 w-full sm:w-auto">
+                                    {/* 🔥 新增的備份按鈕 */}
+                                    <button onClick={handleBackupToExcel} className="flex-1 sm:flex-none text-green-700 hover:bg-green-100 px-3 py-2 rounded-lg text-sm transition-colors border border-green-300 bg-white/90 font-bold flex items-center justify-center gap-1 shadow-sm">
+                                        <i className="fa-solid fa-file-excel"></i> 複製至 Excel
                                     </button>
-                                )}
+                                    
+                                    {isAdmin && votes.length > 0 && (
+                                        <button onClick={handleResetAll} className="flex-1 sm:flex-none text-red-600 hover:bg-red-100 px-3 py-2 rounded-lg text-sm transition-colors border border-red-300 bg-white/90 font-bold flex items-center justify-center gap-1 shadow-sm">
+                                            <i className="fa-solid fa-rotate-right"></i> 清空重置
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             <div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
                                 {votes.length === 0 ? <p className="text-center text-gray-600 font-medium py-4">目前尚無人登記</p> : null}
