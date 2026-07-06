@@ -114,11 +114,12 @@
             { id: 'prize_15', name: '最強王國-王城技能書選擇箱', limit: 1, icon: 'fa-book' }
         ];
 
+        // 🔥 更新：將 國際優狼 更改為 揉到射學長
         const initialMembers = [
             { gameId: '竹息辣寶貝', lineId: 'Nick' }, { gameId: '這是我的鯊鯊', lineId: 'M' },
             { gameId: '歐娜', lineId: 'ANDYHU' }, { gameId: '雪山上の醬板鴨', lineId: 'Hank Shen' },
             { gameId: 'Anicesiou', lineId: 'Zihsiou' }, { gameId: 'Oo卡肉絲oO', lineId: 'Carlos.Tseng' },
-            { gameId: '國際優狼', lineId: 'NIK' }, { gameId: '含式豆撫鍋', lineId: 'M・' },
+            { gameId: '揉到射學長', lineId: 'NIK' }, { gameId: '含式豆撫鍋', lineId: 'M・' },
             { gameId: '石柱', lineId: '石晉榮' }, { gameId: '朕心繫天下', lineId: '83' },
             { gameId: '土河馬', lineId: 'WT' }, { gameId: '夏洛特啊', lineId: 'Wyne' },
             { gameId: '中華老爺', lineId: '中華老爺爺(時郡)' }, { gameId: '歐拉娜', lineId: 'ANDYHU' },
@@ -361,7 +362,6 @@
                 }
             };
 
-            // 🔥 新增：一鍵備份至 Excel / Google Sheets 的功能
             const handleBackupToExcel = () => {
                 if (votes.length === 0) {
                     showToast('⚠️ 目前沒有資料可以備份');
@@ -534,7 +534,6 @@
                                     <i className="fa-solid fa-list-check text-green-600"></i> 即時登記名單 ({votes.length}人)
                                 </h2>
                                 <div className="flex gap-2 w-full sm:w-auto">
-                                    {/* 🔥 新增的備份按鈕 */}
                                     <button onClick={handleBackupToExcel} className="flex-1 sm:flex-none text-green-700 hover:bg-green-100 px-3 py-2 rounded-lg text-sm transition-colors border border-green-300 bg-white/90 font-bold flex items-center justify-center gap-1 shadow-sm">
                                         <i className="fa-solid fa-file-excel"></i> 複製至 Excel
                                     </button>
